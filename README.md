@@ -96,7 +96,3 @@ This application integrates with the Groq API to provide AI-powered resume analy
 - Add support for more file formats
 - Enhance job matching algorithms
 - Implement user accounts to save analysis history
-
-## License
-
-MIT
