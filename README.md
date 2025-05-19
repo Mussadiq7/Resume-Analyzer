@@ -21,14 +21,6 @@ A Streamlit web application that analyzes resumes, extracts key information, and
 pip install -r requirements.txt
 ```
 
-3. Download NLTK data (optional, will be done automatically on first run):
-
-```python
-import nltk
-nltk.download('punkt')
-nltk.download('stopwords')
-```
-
 ## Usage
 
 1. Run the Streamlit app:
