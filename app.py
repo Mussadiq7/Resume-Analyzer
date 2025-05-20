@@ -50,16 +50,29 @@ def process_resume(file):
         # Initialize parser
         parser = ResumeParser()
         
-        # Parse resume
+        # Parse resume to get text
         resume_text = parser.parse(file, file_extension)
         
         if isinstance(resume_text, str) and resume_text.startswith("Error"):
             st.error(resume_text)
             return None
         
-        # Extract contact info and sections
-        contact_info = parser.extract_contact_info()
-        sections = parser.extract_sections()
+        # Initialize Groq analyzer (will use default API key from .env file)
+        groq_analyzer = GroqAnalyzer()
+        
+        # Use Groq AI to extract structured information instead of regex
+        structured_info = groq_analyzer.extract_structured_information(resume_text)
+        
+        # Check if there was an error with the extraction
+        if structured_info.get('error'):
+            # Fall back to regex-based parsing if AI extraction fails
+            contact_info = parser.extract_contact_info()
+            sections = parser.extract_sections()
+            st.warning(f"Using traditional parsing methods. {structured_info['error']}")
+        else:
+            # Use the AI-extracted information
+            contact_info = structured_info.get('contact_info', {})
+            sections = structured_info.get('sections', {})
         
         # Initialize results without Groq analysis first
         results = {
@@ -68,9 +81,6 @@ def process_resume(file):
             'sections': sections,
             'readability': {}  # Will be filled later
         }
-        
-        # Initialize Groq analyzer (will use default API key from .env file)
-        groq_analyzer = GroqAnalyzer()
         
         # Analyze resume with Groq
         groq_result = groq_analyzer.analyze_resume(

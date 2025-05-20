@@ -128,14 +128,15 @@ class GroqAnalyzer:
             4. Evaluation of the language, action verbs, and achievement descriptions
             5. Any red flags or issues that might concern employers
             
-            Format your response as JSON with the following structure:
-            {{"overall_assessment": "text here",
-              "key_strengths": ["strength1", "strength2", ...],
-              "improvement_areas": ["area1", "area2", ...],
-              "specific_suggestions": ["suggestion1", "suggestion2", ...],
-              "structure_feedback": "text here",
-              "language_feedback": "text here",
-              "red_flags": ["flag1", "flag2", ...]
+            IMPORTANT: Your response MUST be a valid JSON object with EXACTLY this structure:
+            {{
+              "overall_assessment": "text",
+              "key_strengths": ["strength1", "strength2", "strength3"],
+              "improvement_areas": ["area1", "area2", "area3"],
+              "specific_suggestions": ["suggestion1", "suggestion2", "suggestion3"],
+              "structure_feedback": "text",
+              "language_feedback": "text",
+              "red_flags": ["flag1", "flag2"]
             }}
             """
             
@@ -149,12 +150,17 @@ class GroqAnalyzer:
                 JOB DESCRIPTION:
                 {job_description}
                 
-                In your JSON response, add:
-                "job_match": {{"match_assessment": "text here",
-                              "missing_keywords": ["keyword1", "keyword2", ...],
-                              "alignment_score": a number from 0-100,
-                              "recommendations": ["rec1", "rec2", ...]
-                            }}
+                Add this EXACT structure to your JSON:
+                {{
+                  "job_match": {{
+                    "match_assessment": "text",
+                    "missing_keywords": ["keyword1", "keyword2", "keyword3"],
+                    "alignment_score": 75,
+                    "recommendations": ["rec1", "rec2", "rec3"]
+                  }}
+                }}
+                
+                IMPORTANT: Ensure the final JSON is valid and properly formatted with all closing braces and brackets.
                 """
             
             # Call Groq API
@@ -223,7 +229,82 @@ class GroqAnalyzer:
             if not suggestions:
                 suggestions = ["Unable to generate suggestions. Please try again."]
                 
-            return suggestions
+            return suggestions[:7]  # Limit to 7 suggestions max
             
         except Exception as e:
             return [f"Error generating suggestions: {str(e)}"]
+    
+    def extract_structured_information(self, resume_text: str) -> Dict[str, Any]:
+        """Extract structured information from the resume text using Groq AI
+        
+        Args:
+            resume_text: The raw text extracted from the resume
+            
+        Returns:
+            Dictionary with structured information (contact info, sections, etc.)
+        """
+        if not resume_text or len(resume_text.strip()) < 100:
+            return {
+                "error": "Resume text is too short or empty",
+                "contact_info": {},
+                "sections": {}
+            }
+            
+        try:
+            prompt = f"""You are an expert resume parser. Extract structured information from the following resume text. Identify the contact information and major sections.
+
+            RESUME TEXT:
+            {resume_text}
+
+            Your response MUST be a well-formed JSON with EXACTLY this structure:
+            {{
+              "contact_info": {{
+                "name": "John Doe",
+                "email": "johndoe@example.com",
+                "phone": "123-456-7890",
+                "linkedin": "linkedin.com/in/johndoe",
+                "github": "github.com/johndoe",
+                "website": "johndoe.com"
+              }},
+              "sections": {{
+                "summary": "Text from summary section",
+                "experience": "Text from experience section",
+                "education": "Text from education section",
+                "skills": "Text from skills section",
+                "projects": "Text from projects section",
+                "certifications": "Text from certifications section"
+              }}
+            }}
+
+            IMPORTANT: If a field is not found in the resume, use an empty string for text fields or empty object ({{}} ) for objects. Ensure all fields exist even if empty.
+            """
+            
+            # Call Groq API with the larger model for comprehensive analysis
+            response = self.client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=[
+                    {"role": "system", "content": "You are an expert resume parser that extracts structured information in JSON format."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2,  # Lower temperature for more consistent parsing
+                max_tokens=4000,
+                response_format={"type": "json_object"}
+            )
+            
+            # Parse the JSON response
+            parsed_data = json.loads(response.choices[0].message.content)
+            
+            # Ensure expected structure exists
+            if 'contact_info' not in parsed_data:
+                parsed_data['contact_info'] = {}
+            if 'sections' not in parsed_data:
+                parsed_data['sections'] = {}
+                
+            return parsed_data
+        
+        except Exception as e:
+            return {
+                "error": f"Error extracting structured information: {str(e)}",
+                "contact_info": {},
+                "sections": {}
+            }
