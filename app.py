@@ -69,8 +69,8 @@ def process_resume(file):
             'readability': {}  # Will be filled later
         }
         
-        # Initialize Groq analyzer (will use default API key if none is provided in UI)
-        groq_analyzer = GroqAnalyzer(api_key=st.session_state.groq_api_key)
+        # Initialize Groq analyzer (will use default API key from .env file)
+        groq_analyzer = GroqAnalyzer()
         
         # Analyze resume with Groq
         groq_result = groq_analyzer.analyze_resume(
